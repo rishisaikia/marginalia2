@@ -33,7 +33,10 @@ function parseFrontmatter(text) {
     if (catBlock) {
         frontmatter.category = catBlock[1]
             .split('\n')
-            .map(l => l.replace(/^\s+-\s*/, '').trim())
+            .map(l => {
+                const value = l.replace(/^\s+-\s*/, '').trim().replace(/^["']|["']$/g, '');
+                return value.replace(/\[\[(.+?)\]\]/g, '$1').trim(); // strip Obsidian [[Link]] syntax
+            })
             .filter(Boolean);
     }
 
