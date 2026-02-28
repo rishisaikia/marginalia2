@@ -30,6 +30,24 @@ function getIdentity() {
     return window.netlifyIdentity;
 }
 
+// ─── localStorage helpers (primary persistence) ────────────────────────────────
+// Saves are always written to localStorage immediately so they survive page
+// reloads even if the Netlify Blobs network call hasn't completed yet.
+const LS_KEY = (userId) => `kg-saves-${userId}`;
+
+function loadLocalSaves(userId) {
+    try {
+        const raw = localStorage.getItem(LS_KEY(userId));
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+}
+
+function persistLocalSaves(userId, likesSet) {
+    try {
+        localStorage.setItem(LS_KEY(userId), JSON.stringify(Array.from(likesSet)));
+    } catch { /* storage full — silently skip */ }
+}
+
 // ─── Dynamic Category Colors ───────────────────────────────────────────────────
 const COLOR_PALETTE = [
     'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
@@ -185,17 +203,18 @@ export default function App() {
         ni.on('init', (u) => {
             setUser(u || null);
             setAuthLoading(false);
+            // Restore from localStorage immediately so UI isn't blank
+            if (u?.id) setLikes(loadLocalSaves(u.id));
         });
 
         ni.on('login', (u) => {
             setUser(u);
-            // After login, redirect back (closes modal automatically)
             ni.close();
         });
 
         ni.on('logout', () => {
             setUser(null);
-            setLikes(new Set());
+            setLikes(new Set()); // clear in-memory only; localStorage stays for next login
         });
 
         ni.init();
@@ -208,27 +227,49 @@ export default function App() {
     }, [user]);
 
     async function fetchUserSaves(u) {
+        if (!u?.id) return;
+
+        // 1. Restore from localStorage immediately (instant, no network needed)
+        const local = loadLocalSaves(u.id);
+        if (local.size > 0) setLikes(local);
+
+        // 2. Fetch from Blobs for cross-device sync; if it wins, update both
+        //    state AND localStorage so the local copy is always fresh.
         try {
-            const token = u?.token?.access_token;
+            // Always get the freshest token from the widget, not from React state
+            const freshUser = getIdentity()?.currentUser();
+            const token = freshUser?.token?.access_token;
             if (!token) return;
+
             const res = await fetch('/.netlify/functions/saves', {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) return;
+            if (!res.ok) {
+                console.warn('saves GET returned', res.status, await res.text());
+                return;
+            }
             const { saves } = await res.json();
             if (Array.isArray(saves)) {
-                setLikes(new Set(saves));
+                const merged = new Set([...local, ...saves]);
+                setLikes(merged);
+                persistLocalSaves(u.id, merged);
             }
         } catch (err) {
-            console.warn('Could not fetch saves:', err);
+            console.warn('Could not fetch saves from Blobs (using local only):', err);
         }
     }
 
     // ─── Debounced save sync ──────────────────────────────────────────────────
     const syncTimerRef = useRef(null);
+    // Keep a ref to user so the timer callback always sees the latest value
+    const userRef = useRef(user);
+    useEffect(() => { userRef.current = user; }, [user]);
 
-    function scheduleSaveSync(nextLikes) {
-        if (!user) return;
+    function scheduleSaveSync(nextLikes, currentUser) {
+        if (!currentUser) return;
+        // Write to localStorage immediately — never lost even if tab is closed
+        persistLocalSaves(currentUser.id, nextLikes);
+        // Debounce the network call to avoid hammering the function
         clearTimeout(syncTimerRef.current);
         syncTimerRef.current = setTimeout(() => {
             syncSaves(nextLikes);
@@ -236,11 +277,13 @@ export default function App() {
     }
 
     async function syncSaves(likesSet) {
-        const token = user?.token?.access_token;
+        // Always get the freshest token at call-time — avoids stale closure bug
+        const freshUser = getIdentity()?.currentUser();
+        const token = freshUser?.token?.access_token;
         if (!token) return;
         setSaveSyncing(true);
         try {
-            await fetch('/.netlify/functions/saves', {
+            const res = await fetch('/.netlify/functions/saves', {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -248,8 +291,11 @@ export default function App() {
                 },
                 body: JSON.stringify({ saves: Array.from(likesSet) }),
             });
+            if (!res.ok) {
+                console.warn('saves POST returned', res.status, await res.text());
+            }
         } catch (err) {
-            console.warn('Save sync failed:', err);
+            console.warn('Save sync failed (localStorage already saved):', err);
         } finally {
             setSaveSyncing(false);
         }
@@ -317,7 +363,7 @@ export default function App() {
         setLikes(prev => {
             const next = new Set(prev);
             next.has(id) ? next.delete(id) : next.add(id);
-            scheduleSaveSync(next);
+            scheduleSaveSync(next, user);
             return next;
         });
     }, [user]);
