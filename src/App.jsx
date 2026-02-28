@@ -1,9 +1,14 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, X, Network, BookOpen, Layers, Heart, Hash, Lightbulb, AlertTriangle, Globe, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Search, X, Network, BookOpen, Layers, Heart, Hash, Lightbulb, AlertTriangle, Globe, Loader2, AlertCircle, ArrowRight, LogIn, LogOut, User, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+
+// ─── Netlify Identity helpers ──────────────────────────────────────────────────
+// The widget is loaded via a <script> tag in index.html. We reference it via
+// the global `netlifyIdentity` object it exposes.
+function getIdentity() {
+    return window.netlifyIdentity;
+}
 
 // ─── Dynamic Category Colors ───────────────────────────────────────────────────
-// A rotating palette of Tailwind color pairs. New categories added to your repo
-// automatically get a color without any code changes.
 const COLOR_PALETTE = [
     'bg-rose-100 text-rose-700',
     'bg-pink-100 text-pink-700',
@@ -50,6 +55,68 @@ function SkeletonCard() {
     );
 }
 
+// ─── AuthButton ────────────────────────────────────────────────────────────────
+function AuthButton({ user, onSignIn, onSignOut }) {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    // Close menu on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    if (!user) {
+        return (
+            <button
+                id="sign-in-btn"
+                onClick={onSignIn}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-full transition-colors shadow-sm"
+            >
+                <LogIn className="w-4 h-4" />
+                Sign in
+            </button>
+        );
+    }
+
+    const email = user.email || '';
+    const name = user.user_metadata?.full_name || email.split('@')[0] || 'User';
+    const initials = name.slice(0, 2).toUpperCase();
+
+    return (
+        <div className="relative" ref={menuRef}>
+            <button
+                id="user-menu-btn"
+                onClick={() => setMenuOpen(o => !o)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-neutral-100 transition-colors text-sm"
+            >
+                <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {initials}
+                </div>
+                <span className="text-neutral-700 font-medium hidden sm:block max-w-32 truncate">{name}</span>
+            </button>
+            {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-neutral-200 rounded-xl shadow-lg py-1 z-30">
+                    <div className="px-3 py-2 text-xs text-neutral-400 border-b border-neutral-100 truncate">{email}</div>
+                    <button
+                        id="sign-out-btn"
+                        onClick={() => { setMenuOpen(false); onSignOut(); }}
+                        className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors"
+                    >
+                        <LogOut className="w-4 h-4 text-neutral-400" />
+                        Sign out
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
     const [models, setModels] = useState([]);
@@ -61,6 +128,108 @@ export default function App() {
     const [selectedId, setSelectedId] = useState(null);
     const [likes, setLikes] = useState(new Set());
     const [showSavedOnly, setShowSavedOnly] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Lock body scroll when bottom sheet is open on mobile
+    useEffect(() => {
+        if (selectedId) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [selectedId]);
+
+    // Auth state
+    const [user, setUser] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [saveSyncing, setSaveSyncing] = useState(false);
+
+    // Sign-in tooltip state (for guest clicking heart)
+    const [showSignInHint, setShowSignInHint] = useState(false);
+    const hintTimerRef = useRef(null);
+
+    // ─── Netlify Identity init ────────────────────────────────────────────────
+    useEffect(() => {
+        const ni = getIdentity();
+        if (!ni) {
+            console.warn('Netlify Identity widget not loaded');
+            setAuthLoading(false);
+            return;
+        }
+
+        ni.on('init', (u) => {
+            setUser(u || null);
+            setAuthLoading(false);
+        });
+
+        ni.on('login', (u) => {
+            setUser(u);
+            // After login, redirect back (closes modal automatically)
+            ni.close();
+        });
+
+        ni.on('logout', () => {
+            setUser(null);
+            setLikes(new Set());
+        });
+
+        ni.init();
+    }, []);
+
+    // ─── Load user saves after login ─────────────────────────────────────────
+    useEffect(() => {
+        if (!user) return;
+        fetchUserSaves(user);
+    }, [user]);
+
+    async function fetchUserSaves(u) {
+        try {
+            const token = u?.token?.access_token;
+            if (!token) return;
+            const res = await fetch('/.netlify/functions/saves', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const { saves } = await res.json();
+            if (Array.isArray(saves)) {
+                setLikes(new Set(saves));
+            }
+        } catch (err) {
+            console.warn('Could not fetch saves:', err);
+        }
+    }
+
+    // ─── Debounced save sync ──────────────────────────────────────────────────
+    const syncTimerRef = useRef(null);
+
+    function scheduleSaveSync(nextLikes) {
+        if (!user) return;
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = setTimeout(() => {
+            syncSaves(nextLikes);
+        }, 800);
+    }
+
+    async function syncSaves(likesSet) {
+        const token = user?.token?.access_token;
+        if (!token) return;
+        setSaveSyncing(true);
+        try {
+            await fetch('/.netlify/functions/saves', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ saves: Array.from(likesSet) }),
+            });
+        } catch (err) {
+            console.warn('Save sync failed:', err);
+        } finally {
+            setSaveSyncing(false);
+        }
+    }
 
     // ─── Fetch models from Netlify Function ───────────────────────────────────
     useEffect(() => {
@@ -112,18 +281,30 @@ export default function App() {
 
     const toggleLike = useCallback((e, id) => {
         e.stopPropagation();
+
+        if (!user) {
+            // Guest: show sign-in hint
+            setShowSignInHint(true);
+            clearTimeout(hintTimerRef.current);
+            hintTimerRef.current = setTimeout(() => setShowSignInHint(false), 3000);
+            return;
+        }
+
         setLikes(prev => {
             const next = new Set(prev);
             next.has(id) ? next.delete(id) : next.add(id);
+            scheduleSaveSync(next);
             return next;
         });
-    }, []);
+    }, [user]);
 
-    // Find a model by its id from the related list
     const findRelated = useCallback(
         (id) => models.find(m => m.id === id),
         [models]
     );
+
+    const handleSignIn = () => getIdentity()?.open();
+    const handleSignOut = () => getIdentity()?.logout();
 
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
@@ -142,19 +323,47 @@ export default function App() {
                             )}
                         </div>
                     </div>
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                        <input
-                            type="text"
-                            id="search-input"
-                            placeholder="Search concepts..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-neutral-100 border-transparent rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-                        />
+
+                    <div className="flex items-center gap-3">
+                        {/* Search */}
+                        <div className="relative w-full md:w-80">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                            <input
+                                type="text"
+                                id="search-input"
+                                placeholder="Search concepts..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-neutral-100 border-transparent rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                            />
+                        </div>
+
+                        {/* Sync indicator */}
+                        {saveSyncing && (
+                            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin flex-shrink-0" title="Saving..." />
+                        )}
+
+                        {/* Auth */}
+                        {!authLoading && (
+                            <AuthButton user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
+                        )}
                     </div>
                 </div>
             </header>
+
+            {/* Sign-in hint toast */}
+            {showSignInHint && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 text-white text-sm px-5 py-3 rounded-full shadow-xl animate-fade-in">
+                    <Heart className="w-4 h-4 text-rose-400" />
+                    <span>Sign in to save models across devices</span>
+                    <button
+                        onClick={handleSignIn}
+                        className="ml-1 text-indigo-300 hover:text-indigo-200 font-semibold underline underline-offset-2"
+                    >
+                        Sign in
+                    </button>
+                </div>
+            )}
 
             <main className="max-w-7xl mx-auto p-6">
                 {/* Error state */}
@@ -174,9 +383,69 @@ export default function App() {
                     </div>
                 )}
 
+                {/* ── Mobile Filter Toggle ───────────────────────────────── */}
+                {(() => {
+                    const activeFilterLabel = showSavedOnly
+                        ? `Saved (${likes.size})`
+                        : selectedCategory || 'All Models';
+                    return (
+                        <div className="lg:hidden mb-4">
+                            <button
+                                id="mobile-filter-toggle"
+                                onClick={() => setSidebarOpen(prev => !prev)}
+                                className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-700 shadow-sm hover:border-indigo-300 transition-colors"
+                            >
+                                <span className="flex items-center gap-2">
+                                    <SlidersHorizontal className="w-4 h-4 text-neutral-400" />
+                                    <span className="text-neutral-500">Filter:</span>
+                                    <span className="text-indigo-700 font-semibold">{activeFilterLabel}</span>
+                                </span>
+                                {sidebarOpen
+                                    ? <ChevronUp className="w-4 h-4 text-neutral-400" />
+                                    : <ChevronDown className="w-4 h-4 text-neutral-400" />
+                                }
+                            </button>
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sidebarOpen ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+                                <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm space-y-6">
+                                    <nav className="space-y-1">
+                                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">View</h3>
+                                        <button
+                                            onClick={() => { setSelectedCategory(null); setShowSavedOnly(false); setSidebarOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                        >
+                                            <Layers className="w-4 h-4" /> All Models
+                                        </button>
+                                        <button
+                                            onClick={() => { if (!user) { handleSignIn(); return; } setSelectedCategory(null); setShowSavedOnly(true); setSidebarOpen(false); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 text-rose-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                        >
+                                            <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
+                                            Saved ({likes.size})
+                                        </button>
+                                    </nav>
+                                    {allCategories.length > 0 && (
+                                        <nav className="space-y-1">
+                                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">Categories</h3>
+                                            {allCategories.map(cat => (
+                                                <button
+                                                    key={cat}
+                                                    onClick={() => { setSelectedCategory(cat); setShowSavedOnly(false); setSidebarOpen(false); }}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                                >
+                                                    <Hash className="w-3.5 h-3.5 opacity-40" /> {cat}
+                                                </button>
+                                            ))}
+                                        </nav>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Sidebar */}
-                    <aside className="lg:col-span-2 space-y-6">
+                    {/* ── Desktop Sidebar ──────────────────────────────────── */}
+                    <aside className="hidden lg:block lg:col-span-2 space-y-6">
                         <nav className="space-y-1">
                             <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">View</h3>
                             <button
@@ -188,7 +457,11 @@ export default function App() {
                             </button>
                             <button
                                 id="view-saved-btn"
-                                onClick={() => { setSelectedCategory(null); setShowSavedOnly(true); }}
+                                onClick={() => {
+                                    if (!user) { handleSignIn(); return; }
+                                    setSelectedCategory(null);
+                                    setShowSavedOnly(true);
+                                }}
                                 className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 text-rose-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
                             >
                                 <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
@@ -236,8 +509,8 @@ export default function App() {
                                         id={`card-${model.id}`}
                                         onClick={() => setSelectedId(model.id)}
                                         className={`p-5 rounded-2xl border cursor-pointer transition-all duration-200 ${selectedId === model.id
-                                                ? 'bg-indigo-900 border-indigo-900 shadow-xl'
-                                                : 'bg-white border-neutral-200 hover:border-indigo-300 hover:shadow-md'
+                                            ? 'bg-indigo-900 border-indigo-900 shadow-xl'
+                                            : 'bg-white border-neutral-200 hover:border-indigo-300 hover:shadow-md'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start mb-4">
@@ -250,6 +523,7 @@ export default function App() {
                                                 onClick={(e) => toggleLike(e, model.id)}
                                                 className="p-0.5 rounded-full"
                                                 aria-label={likes.has(model.id) ? 'Remove from saved' : 'Save'}
+                                                title={!user ? 'Sign in to save' : undefined}
                                             >
                                                 <Heart className={`w-4 h-4 transition-colors ${likes.has(model.id) ? 'text-rose-500 fill-current' : selectedId === model.id ? 'text-indigo-400' : 'text-neutral-300 hover:text-rose-400'
                                                     }`} />
@@ -267,9 +541,9 @@ export default function App() {
                         )}
                     </section>
 
-                    {/* Detail Panel */}
+                    {/* ── Desktop Detail Panel ─────────────────────────────── */}
                     {selectedModel && (
-                        <aside className="lg:col-span-6" id="detail-panel">
+                        <aside className="hidden lg:block lg:col-span-6" id="detail-panel">
                             <div className="bg-white border border-neutral-200 rounded-2xl p-8 sticky top-24 shadow-2xl shadow-neutral-200/60 max-h-[calc(100vh-7rem)] overflow-y-auto">
                                 <button
                                     id="close-detail-btn"
@@ -361,6 +635,103 @@ export default function App() {
                     )}
                 </div>
             </main>
+
+            {/* ── Mobile Bottom Sheet ──────────────────────────────────────── */}
+            {selectedModel && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+                        onClick={() => setSelectedId(null)}
+                        aria-hidden="true"
+                    />
+                    {/* Sheet */}
+                    <div
+                        id="mobile-detail-sheet"
+                        className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white rounded-t-3xl shadow-2xl"
+                        style={{ maxHeight: '90vh' }}
+                    >
+                        {/* Drag handle */}
+                        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+                        </div>
+                        <div className="overflow-y-auto px-6 pb-8 pt-2" style={{ maxHeight: 'calc(90vh - 24px)' }}>
+                            <div className="relative">
+                                <button
+                                    id="close-detail-btn-mobile"
+                                    onClick={() => setSelectedId(null)}
+                                    className="absolute top-0 right-0 p-2 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors"
+                                    aria-label="Close"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className="flex flex-wrap gap-2 mb-4 pr-10">
+                                    {selectedModel.categories.map(cat => (
+                                        <span key={cat} className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${getCategoryStyle(cat)}`}>{cat}</span>
+                                    ))}
+                                </div>
+
+                                <h2 className="text-2xl font-black text-neutral-900 mb-5">{selectedModel.title}</h2>
+
+                                <div className="space-y-6">
+                                    {selectedModel.definition && (
+                                        <div>
+                                            <SectionHeading icon={<BookOpen className="w-3 h-3" />} color="text-indigo-600" label="Definition" />
+                                            <p className="text-neutral-800 leading-relaxed">{selectedModel.definition}</p>
+                                        </div>
+                                    )}
+                                    {selectedModel.insight && (
+                                        <div>
+                                            <SectionHeading icon={<Lightbulb className="w-3 h-3" />} color="text-emerald-600" label="Key Insight" />
+                                            <p className="text-neutral-600 leading-relaxed">{selectedModel.insight}</p>
+                                        </div>
+                                    )}
+                                    {selectedModel.application && (
+                                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
+                                            <SectionHeading icon={<Layers className="w-3 h-3" />} color="text-amber-800" label="How to Apply" />
+                                            <MarkdownText text={selectedModel.application} className="text-sm text-amber-900/80" />
+                                        </div>
+                                    )}
+                                    {selectedModel.example && (
+                                        <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl">
+                                            <SectionHeading icon={<Globe className="w-3 h-3" />} color="text-sky-800" label="Real-World Example" />
+                                            <p className="text-sm text-sky-900/80 leading-relaxed whitespace-pre-line">{selectedModel.example}</p>
+                                        </div>
+                                    )}
+                                    {selectedModel.pitfalls && (
+                                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
+                                            <SectionHeading icon={<AlertTriangle className="w-3 h-3" />} color="text-rose-700" label="Common Pitfalls" />
+                                            <MarkdownText text={selectedModel.pitfalls} className="text-sm text-rose-900/80" />
+                                        </div>
+                                    )}
+                                    {selectedModel.related && selectedModel.related.length > 0 && (
+                                        <div>
+                                            <SectionHeading icon={<Network className="w-3 h-3" />} color="text-purple-600" label="Related Models" />
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                {selectedModel.related.map(relId => {
+                                                    const rel = findRelated(relId);
+                                                    return rel ? (
+                                                        <button
+                                                            key={relId}
+                                                            onClick={() => setSelectedId(relId)}
+                                                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                                        >
+                                                            {rel.title} <ArrowRight className="w-3 h-3" />
+                                                        </button>
+                                                    ) : (
+                                                        <span key={relId} className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-500">{relId}</span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
