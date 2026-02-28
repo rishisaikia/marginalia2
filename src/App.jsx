@@ -439,38 +439,45 @@ export default function App() {
                                     : <ChevronDown className="w-4 h-4 text-neutral-400" />
                                 }
                             </button>
-                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sidebarOpen ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
-                                <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm space-y-6">
-                                    <nav className="space-y-1">
-                                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">View</h3>
-                                        <button
-                                            onClick={() => { setSelectedCategory(null); setShowSavedOnly(false); setSidebarOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
-                                        >
-                                            <Layers className="w-4 h-4" /> All Models
-                                        </button>
-                                        <button
-                                            onClick={() => { if (!user) { handleSignIn(); return; } setSelectedCategory(null); setShowSavedOnly(true); setSidebarOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
-                                        >
-                                            <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
-                                            Saved ({likes.size})
-                                        </button>
-                                    </nav>
-                                    {allCategories.length > 0 && (
+                            {/* When closed: h-0 + overflow-hidden collapses it.
+                                When open: no overflow constraint so the inner panel can scroll freely. */}
+                            <div className={sidebarOpen ? 'mt-2' : 'h-0 overflow-hidden'}>
+                                <div
+                                    className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-sm overflow-y-auto"
+                                    style={{ maxHeight: 'calc(100vh - 180px)' }}
+                                >
+                                    <div className="p-4 space-y-6">
                                         <nav className="space-y-1">
-                                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">Categories</h3>
-                                            {allCategories.map(cat => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => { setSelectedCategory(cat); setShowSavedOnly(false); setSidebarOpen(false); }}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
-                                                >
-                                                    <Hash className="w-3.5 h-3.5 opacity-40" /> {cat}
-                                                </button>
-                                            ))}
+                                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">View</h3>
+                                            <button
+                                                onClick={() => { setSelectedCategory(null); setShowSavedOnly(false); setSidebarOpen(false); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
+                                            >
+                                                <Layers className="w-4 h-4" /> All Models
+                                            </button>
+                                            <button
+                                                onClick={() => { if (!user) { handleSignIn(); return; } setSelectedCategory(null); setShowSavedOnly(true); setSidebarOpen(false); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
+                                            >
+                                                <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
+                                                Saved ({likes.size})
+                                            </button>
                                         </nav>
-                                    )}
+                                        {allCategories.length > 0 && (
+                                            <nav className="space-y-1">
+                                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">Categories</h3>
+                                                {allCategories.map(cat => (
+                                                    <button
+                                                        key={cat}
+                                                        onClick={() => { setSelectedCategory(cat); setShowSavedOnly(false); setSidebarOpen(false); }}
+                                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
+                                                    >
+                                                        <Hash className="w-3.5 h-3.5 opacity-40" /> {cat}
+                                                    </button>
+                                                ))}
+                                            </nav>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
