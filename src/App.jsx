@@ -1,5 +1,27 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Network, BookOpen, Layers, Heart, Hash, Lightbulb, AlertTriangle, Globe, Loader2, AlertCircle, ArrowRight, LogIn, LogOut, User, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, X, Network, BookOpen, Layers, Heart, Hash, Lightbulb, AlertTriangle, Globe, Loader2, AlertCircle, ArrowRight, LogIn, LogOut, User, SlidersHorizontal, ChevronDown, ChevronUp, Sun, Moon } from 'lucide-react';
+
+// ─── Dark Mode Hook ─────────────────────────────────────────────────────────────
+function useDarkMode() {
+    const [isDark, setIsDark] = useState(() => {
+        const stored = localStorage.getItem('theme');
+        if (stored) return stored === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
+
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isDark) {
+            root.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            root.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [isDark]);
+
+    return [isDark, () => setIsDark(d => !d)];
+}
 
 // ─── Netlify Identity helpers ──────────────────────────────────────────────────
 // The widget is loaded via a <script> tag in index.html. We reference it via
@@ -10,21 +32,21 @@ function getIdentity() {
 
 // ─── Dynamic Category Colors ───────────────────────────────────────────────────
 const COLOR_PALETTE = [
-    'bg-rose-100 text-rose-700',
-    'bg-pink-100 text-pink-700',
-    'bg-fuchsia-100 text-fuchsia-700',
-    'bg-purple-100 text-purple-700',
-    'bg-violet-100 text-violet-700',
-    'bg-indigo-100 text-indigo-700',
-    'bg-blue-100 text-blue-700',
-    'bg-sky-100 text-sky-700',
-    'bg-cyan-100 text-cyan-700',
-    'bg-teal-100 text-teal-700',
-    'bg-emerald-100 text-emerald-700',
-    'bg-green-100 text-green-700',
-    'bg-lime-100 text-lime-700',
-    'bg-amber-100 text-amber-700',
-    'bg-orange-100 text-orange-700',
+    'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
+    'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300',
+    'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
+    'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+    'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+    'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    'bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-300',
+    'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
 ];
 
 const categoryColorCache = {};
@@ -41,15 +63,15 @@ function getCategoryStyle(category) {
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
     return (
-        <div className="p-5 rounded-2xl border border-neutral-200 bg-white animate-pulse">
+        <div className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 animate-pulse">
             <div className="flex justify-between items-start mb-4">
-                <div className="h-4 w-20 bg-neutral-200 rounded-full" />
-                <div className="h-4 w-4 bg-neutral-200 rounded-full" />
+                <div className="h-4 w-20 bg-neutral-200 dark:bg-neutral-700 rounded-full" />
+                <div className="h-4 w-4 bg-neutral-200 dark:bg-neutral-700 rounded-full" />
             </div>
-            <div className="h-5 w-3/4 bg-neutral-200 rounded mb-2" />
+            <div className="h-5 w-3/4 bg-neutral-200 dark:bg-neutral-700 rounded mb-2" />
             <div className="space-y-1">
-                <div className="h-3 w-full bg-neutral-100 rounded" />
-                <div className="h-3 w-5/6 bg-neutral-100 rounded" />
+                <div className="h-3 w-full bg-neutral-100 dark:bg-neutral-700/60 rounded" />
+                <div className="h-3 w-5/6 bg-neutral-100 dark:bg-neutral-700/60 rounded" />
             </div>
         </div>
     );
@@ -76,7 +98,7 @@ function AuthButton({ user, onSignIn, onSignOut }) {
             <button
                 id="sign-in-btn"
                 onClick={onSignIn}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-full transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium rounded-full transition-colors shadow-sm whitespace-nowrap"
             >
                 <LogIn className="w-4 h-4" />
                 Sign in
@@ -93,20 +115,20 @@ function AuthButton({ user, onSignIn, onSignOut }) {
             <button
                 id="user-menu-btn"
                 onClick={() => setMenuOpen(o => !o)}
-                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-neutral-100 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-sm"
             >
                 <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {initials}
                 </div>
-                <span className="text-neutral-700 font-medium hidden sm:block max-w-32 truncate">{name}</span>
+                <span className="text-neutral-700 dark:text-neutral-300 font-medium hidden sm:block max-w-32 truncate">{name}</span>
             </button>
             {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-neutral-200 rounded-xl shadow-lg py-1 z-30">
-                    <div className="px-3 py-2 text-xs text-neutral-400 border-b border-neutral-100 truncate">{email}</div>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 z-30">
+                    <div className="px-3 py-2 text-xs text-neutral-400 dark:text-neutral-500 border-b border-neutral-100 dark:border-neutral-700 truncate">{email}</div>
                     <button
                         id="sign-out-btn"
                         onClick={() => { setMenuOpen(false); onSignOut(); }}
-                        className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors"
                     >
                         <LogOut className="w-4 h-4 text-neutral-400" />
                         Sign out
@@ -119,6 +141,8 @@ function AuthButton({ user, onSignIn, onSignOut }) {
 
 // ─── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
+    const [isDark, toggleDark] = useDarkMode();
+
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -308,18 +332,18 @@ export default function App() {
 
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-indigo-100">
+        <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 transition-colors duration-300">
             {/* Header */}
-            <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-neutral-200 px-6 py-4">
+            <header className="sticky top-0 z-20 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-700 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="bg-indigo-600 p-2 rounded-lg shadow-sm">
                             <Network className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold tracking-tight text-neutral-900 leading-none">Knowledge Garden</h1>
+                            <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 leading-none">Knowledge Garden</h1>
                             {!loading && !error && (
-                                <p className="text-xs text-neutral-400 mt-0.5">{models.length} mental models</p>
+                                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{models.length} mental models</p>
                             )}
                         </div>
                     </div>
@@ -334,9 +358,19 @@ export default function App() {
                                 placeholder="Search concepts..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-neutral-100 border-transparent rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                className="w-full pl-10 pr-4 py-2 bg-neutral-100 dark:bg-neutral-800 border-transparent rounded-full text-sm focus:bg-white dark:focus:bg-neutral-700 focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
                             />
                         </div>
+
+                        {/* Dark / Light Toggle */}
+                        <button
+                            id="theme-toggle-btn"
+                            onClick={toggleDark}
+                            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                            className="p-2 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors flex-shrink-0"
+                        >
+                            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        </button>
 
                         {/* Sync indicator */}
                         {saveSyncing && (
@@ -353,7 +387,7 @@ export default function App() {
 
             {/* Sign-in hint toast */}
             {showSignInHint && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 text-white text-sm px-5 py-3 rounded-full shadow-xl animate-fade-in">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-neutral-900 dark:bg-neutral-700 text-white text-sm px-5 py-3 rounded-full shadow-xl animate-fade-in">
                     <Heart className="w-4 h-4 text-rose-400" />
                     <span>Sign in to save models across devices</span>
                     <button
@@ -368,14 +402,14 @@ export default function App() {
             <main className="max-w-7xl mx-auto p-6">
                 {/* Error state */}
                 {error && (
-                    <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-5">
+                    <div className="mb-6 flex items-start gap-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-2xl p-5">
                         <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
                         <div>
-                            <p className="font-semibold text-red-800 text-sm">Failed to load mental models</p>
-                            <p className="text-red-600 text-sm mt-0.5">{error}</p>
+                            <p className="font-semibold text-red-800 dark:text-red-300 text-sm">Failed to load mental models</p>
+                            <p className="text-red-600 dark:text-red-400 text-sm mt-0.5">{error}</p>
                             <button
                                 onClick={() => window.location.reload()}
-                                className="mt-2 text-xs text-red-700 underline hover:text-red-900"
+                                className="mt-2 text-xs text-red-700 dark:text-red-400 underline hover:text-red-900 dark:hover:text-red-200"
                             >
                                 Try again
                             </button>
@@ -393,12 +427,12 @@ export default function App() {
                             <button
                                 id="mobile-filter-toggle"
                                 onClick={() => setSidebarOpen(prev => !prev)}
-                                className="flex items-center justify-between w-full px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-700 shadow-sm hover:border-indigo-300 transition-colors"
+                                className="flex items-center justify-between w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-medium text-neutral-700 dark:text-neutral-300 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors"
                             >
                                 <span className="flex items-center gap-2">
                                     <SlidersHorizontal className="w-4 h-4 text-neutral-400" />
-                                    <span className="text-neutral-500">Filter:</span>
-                                    <span className="text-indigo-700 font-semibold">{activeFilterLabel}</span>
+                                    <span className="text-neutral-500 dark:text-neutral-400">Filter:</span>
+                                    <span className="text-indigo-700 dark:text-indigo-300 font-semibold">{activeFilterLabel}</span>
                                 </span>
                                 {sidebarOpen
                                     ? <ChevronUp className="w-4 h-4 text-neutral-400" />
@@ -406,18 +440,18 @@ export default function App() {
                                 }
                             </button>
                             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${sidebarOpen ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
-                                <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm space-y-6">
+                                <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm space-y-6">
                                     <nav className="space-y-1">
-                                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">View</h3>
+                                        <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">View</h3>
                                         <button
                                             onClick={() => { setSelectedCategory(null); setShowSavedOnly(false); setSidebarOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
                                         >
                                             <Layers className="w-4 h-4" /> All Models
                                         </button>
                                         <button
                                             onClick={() => { if (!user) { handleSignIn(); return; } setSelectedCategory(null); setShowSavedOnly(true); setSidebarOpen(false); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 text-rose-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
                                         >
                                             <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
                                             Saved ({likes.size})
@@ -425,12 +459,12 @@ export default function App() {
                                     </nav>
                                     {allCategories.length > 0 && (
                                         <nav className="space-y-1">
-                                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">Categories</h3>
+                                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">Categories</h3>
                                             {allCategories.map(cat => (
                                                 <button
                                                     key={cat}
                                                     onClick={() => { setSelectedCategory(cat); setShowSavedOnly(false); setSidebarOpen(false); }}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700'}`}
                                                 >
                                                     <Hash className="w-3.5 h-3.5 opacity-40" /> {cat}
                                                 </button>
@@ -447,11 +481,11 @@ export default function App() {
                     {/* ── Desktop Sidebar ──────────────────────────────────── */}
                     <aside className="hidden lg:block lg:col-span-2 space-y-6">
                         <nav className="space-y-1">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">View</h3>
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">View</h3>
                             <button
                                 id="view-all-btn"
                                 onClick={() => { setSelectedCategory(null); setShowSavedOnly(false); }}
-                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${!selectedCategory && !showSavedOnly ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                             >
                                 <Layers className="w-4 h-4" /> All Models
                             </button>
@@ -462,7 +496,7 @@ export default function App() {
                                     setSelectedCategory(null);
                                     setShowSavedOnly(true);
                                 }}
-                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 text-rose-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${showSavedOnly ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                             >
                                 <Heart className={`w-4 h-4 ${showSavedOnly ? 'fill-current' : ''}`} />
                                 Saved ({likes.size})
@@ -471,12 +505,12 @@ export default function App() {
 
                         {allCategories.length > 0 && (
                             <nav className="space-y-1">
-                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 px-3 mb-2">Categories</h3>
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 px-3 mb-2">Categories</h3>
                                 {allCategories.map(cat => (
                                     <button
                                         key={cat}
                                         onClick={() => { setSelectedCategory(cat); setShowSavedOnly(false); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-neutral-600 hover:bg-neutral-100'}`}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${selectedCategory === cat ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}
                                     >
                                         <Hash className="w-3.5 h-3.5 opacity-40" /> {cat}
                                     </button>
@@ -493,11 +527,11 @@ export default function App() {
                             </div>
                         ) : filteredModels.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
-                                <div className="w-12 h-12 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4">
+                                <div className="w-12 h-12 bg-neutral-100 dark:bg-neutral-800 rounded-2xl flex items-center justify-center mb-4">
                                     <Search className="w-5 h-5 text-neutral-400" />
                                 </div>
-                                <p className="font-semibold text-neutral-700">No models found</p>
-                                <p className="text-sm text-neutral-400 mt-1">
+                                <p className="font-semibold text-neutral-700 dark:text-neutral-300">No models found</p>
+                                <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
                                     {showSavedOnly ? 'Save some models first' : 'Try a different search or category'}
                                 </p>
                             </div>
@@ -510,7 +544,7 @@ export default function App() {
                                         onClick={() => setSelectedId(model.id)}
                                         className={`p-5 rounded-2xl border cursor-pointer transition-all duration-200 ${selectedId === model.id
                                             ? 'bg-indigo-900 border-indigo-900 shadow-xl'
-                                            : 'bg-white border-neutral-200 hover:border-indigo-300 hover:shadow-md'
+                                            : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md dark:hover:shadow-indigo-950/20'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start mb-4">
@@ -525,14 +559,14 @@ export default function App() {
                                                 aria-label={likes.has(model.id) ? 'Remove from saved' : 'Save'}
                                                 title={!user ? 'Sign in to save' : undefined}
                                             >
-                                                <Heart className={`w-4 h-4 transition-colors ${likes.has(model.id) ? 'text-rose-500 fill-current' : selectedId === model.id ? 'text-indigo-400' : 'text-neutral-300 hover:text-rose-400'
+                                                <Heart className={`w-4 h-4 transition-colors ${likes.has(model.id) ? 'text-rose-500 fill-current' : selectedId === model.id ? 'text-indigo-400' : 'text-neutral-300 dark:text-neutral-600 hover:text-rose-400'
                                                     }`} />
                                             </button>
                                         </div>
-                                        <h2 className={`font-bold mb-2 ${selectedId === model.id ? 'text-white' : 'text-neutral-900'}`}>
+                                        <h2 className={`font-bold mb-2 ${selectedId === model.id ? 'text-white' : 'text-neutral-900 dark:text-neutral-100'}`}>
                                             {model.title}
                                         </h2>
-                                        <p className={`text-xs leading-relaxed line-clamp-2 ${selectedId === model.id ? 'text-indigo-200' : 'text-neutral-500'}`}>
+                                        <p className={`text-xs leading-relaxed line-clamp-2 ${selectedId === model.id ? 'text-indigo-200' : 'text-neutral-500 dark:text-neutral-400'}`}>
                                             {model.definition}
                                         </p>
                                     </div>
@@ -544,11 +578,11 @@ export default function App() {
                     {/* ── Desktop Detail Panel ─────────────────────────────── */}
                     {selectedModel && (
                         <aside className="hidden lg:block lg:col-span-6" id="detail-panel">
-                            <div className="bg-white border border-neutral-200 rounded-2xl p-8 sticky top-24 shadow-2xl shadow-neutral-200/60 max-h-[calc(100vh-7rem)] overflow-y-auto">
+                            <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-2xl p-8 sticky top-24 shadow-2xl shadow-neutral-200/60 dark:shadow-neutral-950/60 max-h-[calc(100vh-7rem)] overflow-y-auto">
                                 <button
                                     id="close-detail-btn"
                                     onClick={() => setSelectedId(null)}
-                                    className="absolute top-6 right-6 p-2 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors"
+                                    className="absolute top-6 right-6 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
                                     aria-label="Close"
                                 >
                                     <X className="w-5 h-5" />
@@ -561,53 +595,53 @@ export default function App() {
                                     ))}
                                 </div>
 
-                                <h2 className="text-3xl font-black text-neutral-900 mb-6">{selectedModel.title}</h2>
+                                <h2 className="text-3xl font-black text-neutral-900 dark:text-neutral-100 mb-6">{selectedModel.title}</h2>
 
                                 <div className="space-y-8">
                                     {/* Definition */}
                                     {selectedModel.definition && (
                                         <div>
-                                            <SectionHeading icon={<BookOpen className="w-3 h-3" />} color="text-indigo-600" label="Definition" />
-                                            <p className="text-neutral-800 text-lg leading-relaxed">{selectedModel.definition}</p>
+                                            <SectionHeading icon={<BookOpen className="w-3 h-3" />} color="text-indigo-600 dark:text-indigo-400" label="Definition" />
+                                            <p className="text-neutral-800 dark:text-neutral-200 text-lg leading-relaxed">{selectedModel.definition}</p>
                                         </div>
                                     )}
 
                                     {/* Key Insight */}
                                     {selectedModel.insight && (
                                         <div>
-                                            <SectionHeading icon={<Lightbulb className="w-3 h-3" />} color="text-emerald-600" label="Key Insight" />
-                                            <p className="text-neutral-600 leading-relaxed">{selectedModel.insight}</p>
+                                            <SectionHeading icon={<Lightbulb className="w-3 h-3" />} color="text-emerald-600 dark:text-emerald-400" label="Key Insight" />
+                                            <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">{selectedModel.insight}</p>
                                         </div>
                                     )}
 
                                     {/* How to Apply */}
                                     {selectedModel.application && (
-                                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<Layers className="w-3 h-3" />} color="text-amber-800" label="How to Apply" />
-                                            <MarkdownText text={selectedModel.application} className="text-sm text-amber-900/80" />
+                                        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<Layers className="w-3 h-3" />} color="text-amber-800 dark:text-amber-400" label="How to Apply" />
+                                            <MarkdownText text={selectedModel.application} className="text-sm text-amber-900/80 dark:text-amber-200/80" />
                                         </div>
                                     )}
 
                                     {/* Real-World Example */}
                                     {selectedModel.example && (
-                                        <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<Globe className="w-3 h-3" />} color="text-sky-800" label="Real-World Example" />
-                                            <p className="text-sm text-sky-900/80 leading-relaxed whitespace-pre-line">{selectedModel.example}</p>
+                                        <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<Globe className="w-3 h-3" />} color="text-sky-800 dark:text-sky-400" label="Real-World Example" />
+                                            <p className="text-sm text-sky-900/80 dark:text-sky-200/80 leading-relaxed whitespace-pre-line">{selectedModel.example}</p>
                                         </div>
                                     )}
 
                                     {/* Common Pitfalls */}
                                     {selectedModel.pitfalls && (
-                                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<AlertTriangle className="w-3 h-3" />} color="text-rose-700" label="Common Pitfalls" />
-                                            <MarkdownText text={selectedModel.pitfalls} className="text-sm text-rose-900/80" />
+                                        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<AlertTriangle className="w-3 h-3" />} color="text-rose-700 dark:text-rose-400" label="Common Pitfalls" />
+                                            <MarkdownText text={selectedModel.pitfalls} className="text-sm text-rose-900/80 dark:text-rose-200/80" />
                                         </div>
                                     )}
 
                                     {/* Related Models */}
                                     {selectedModel.related && selectedModel.related.length > 0 && (
                                         <div>
-                                            <SectionHeading icon={<Network className="w-3 h-3" />} color="text-purple-600" label="Related Models" />
+                                            <SectionHeading icon={<Network className="w-3 h-3" />} color="text-purple-600 dark:text-purple-400" label="Related Models" />
                                             <div className="flex flex-wrap gap-2 mt-1">
                                                 {selectedModel.related.map(relId => {
                                                     const rel = findRelated(relId);
@@ -616,12 +650,12 @@ export default function App() {
                                                             key={relId}
                                                             id={`related-${relId}`}
                                                             onClick={() => setSelectedId(relId)}
-                                                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
                                                         >
                                                             {rel.title} <ArrowRight className="w-3 h-3" />
                                                         </button>
                                                     ) : (
-                                                        <span key={relId} className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-500">
+                                                        <span key={relId} className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400">
                                                             {relId}
                                                         </span>
                                                     );
@@ -648,19 +682,19 @@ export default function App() {
                     {/* Sheet */}
                     <div
                         id="mobile-detail-sheet"
-                        className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white rounded-t-3xl shadow-2xl"
+                        className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-neutral-800 rounded-t-3xl shadow-2xl"
                         style={{ maxHeight: '90vh' }}
                     >
                         {/* Drag handle */}
                         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-                            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+                            <div className="w-10 h-1 bg-neutral-200 dark:bg-neutral-600 rounded-full" />
                         </div>
                         <div className="overflow-y-auto px-6 pb-8 pt-2" style={{ maxHeight: 'calc(90vh - 24px)' }}>
                             <div className="relative">
                                 <button
                                     id="close-detail-btn-mobile"
                                     onClick={() => setSelectedId(null)}
-                                    className="absolute top-0 right-0 p-2 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-900 transition-colors"
+                                    className="absolute top-0 right-0 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-full text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
                                     aria-label="Close"
                                 >
                                     <X className="w-5 h-5" />
@@ -672,42 +706,42 @@ export default function App() {
                                     ))}
                                 </div>
 
-                                <h2 className="text-2xl font-black text-neutral-900 mb-5">{selectedModel.title}</h2>
+                                <h2 className="text-2xl font-black text-neutral-900 dark:text-neutral-100 mb-5">{selectedModel.title}</h2>
 
                                 <div className="space-y-6">
                                     {selectedModel.definition && (
                                         <div>
-                                            <SectionHeading icon={<BookOpen className="w-3 h-3" />} color="text-indigo-600" label="Definition" />
-                                            <p className="text-neutral-800 leading-relaxed">{selectedModel.definition}</p>
+                                            <SectionHeading icon={<BookOpen className="w-3 h-3" />} color="text-indigo-600 dark:text-indigo-400" label="Definition" />
+                                            <p className="text-neutral-800 dark:text-neutral-200 leading-relaxed">{selectedModel.definition}</p>
                                         </div>
                                     )}
                                     {selectedModel.insight && (
                                         <div>
-                                            <SectionHeading icon={<Lightbulb className="w-3 h-3" />} color="text-emerald-600" label="Key Insight" />
-                                            <p className="text-neutral-600 leading-relaxed">{selectedModel.insight}</p>
+                                            <SectionHeading icon={<Lightbulb className="w-3 h-3" />} color="text-emerald-600 dark:text-emerald-400" label="Key Insight" />
+                                            <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed">{selectedModel.insight}</p>
                                         </div>
                                     )}
                                     {selectedModel.application && (
-                                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<Layers className="w-3 h-3" />} color="text-amber-800" label="How to Apply" />
-                                            <MarkdownText text={selectedModel.application} className="text-sm text-amber-900/80" />
+                                        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<Layers className="w-3 h-3" />} color="text-amber-800 dark:text-amber-400" label="How to Apply" />
+                                            <MarkdownText text={selectedModel.application} className="text-sm text-amber-900/80 dark:text-amber-200/80" />
                                         </div>
                                     )}
                                     {selectedModel.example && (
-                                        <div className="bg-sky-50 border border-sky-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<Globe className="w-3 h-3" />} color="text-sky-800" label="Real-World Example" />
-                                            <p className="text-sm text-sky-900/80 leading-relaxed whitespace-pre-line">{selectedModel.example}</p>
+                                        <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<Globe className="w-3 h-3" />} color="text-sky-800 dark:text-sky-400" label="Real-World Example" />
+                                            <p className="text-sm text-sky-900/80 dark:text-sky-200/80 leading-relaxed whitespace-pre-line">{selectedModel.example}</p>
                                         </div>
                                     )}
                                     {selectedModel.pitfalls && (
-                                        <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
-                                            <SectionHeading icon={<AlertTriangle className="w-3 h-3" />} color="text-rose-700" label="Common Pitfalls" />
-                                            <MarkdownText text={selectedModel.pitfalls} className="text-sm text-rose-900/80" />
+                                        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 p-4 rounded-xl">
+                                            <SectionHeading icon={<AlertTriangle className="w-3 h-3" />} color="text-rose-700 dark:text-rose-400" label="Common Pitfalls" />
+                                            <MarkdownText text={selectedModel.pitfalls} className="text-sm text-rose-900/80 dark:text-rose-200/80" />
                                         </div>
                                     )}
                                     {selectedModel.related && selectedModel.related.length > 0 && (
                                         <div>
-                                            <SectionHeading icon={<Network className="w-3 h-3" />} color="text-purple-600" label="Related Models" />
+                                            <SectionHeading icon={<Network className="w-3 h-3" />} color="text-purple-600 dark:text-purple-400" label="Related Models" />
                                             <div className="flex flex-wrap gap-2 mt-1">
                                                 {selectedModel.related.map(relId => {
                                                     const rel = findRelated(relId);
@@ -715,12 +749,12 @@ export default function App() {
                                                         <button
                                                             key={relId}
                                                             onClick={() => setSelectedId(relId)}
-                                                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                                            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
                                                         >
                                                             {rel.title} <ArrowRight className="w-3 h-3" />
                                                         </button>
                                                     ) : (
-                                                        <span key={relId} className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 text-neutral-500">{relId}</span>
+                                                        <span key={relId} className="text-xs px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400">{relId}</span>
                                                     );
                                                 })}
                                             </div>
